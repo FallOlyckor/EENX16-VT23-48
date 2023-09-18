@@ -1,0 +1,117 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  STANDARD
+  MEDIC_CENTRAL
+  TRYGGHETSJOUR
+  AMBULANCE_DRIVER
+}
+
+enum SensorUserStatus {
+  HOME
+  RAMLAT
+  LARMAT
+  LARMCENTRAL
+  AMBULANS
+  AMBULANS_ON_SPOT
+  ON_ROUTE_TO_HOSPITAL
+  HOSPITAL
+}
+
+model User {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  email                   String      @unique
+  password                String
+  expoPushToken           String
+  role                    UserRole
+  sensorUsersIDs          String[]    @db.ObjectId
+  sensorUsers             SensorUser[] @relation(fields: [sensorUsersIDs], references: [id])
+  chatIDs                 String[]    @db.ObjectId
+  chats                   Chat[]      @relation(fields: [chatIDs], references: [id])
+  messages                Message[]
+  history                 History?
+}
+
+model SensorUser {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  socialSecurityNumber    String      @unique
+  name                    String
+  status                  SensorUserStatus
+  phoneNr                 String
+  location                String
+  userIds                 String[]    @db.ObjectId
+  users                   User[]      @relation(fields: [userIds], references: [id])
+  fitbit                  FitBit?
+  fall                    Fall?
+  chat                    Chat?
+}
+
+model History {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt               DateTime    @default(now())
+  fallsIDs                String[]    @db.ObjectId
+  falls                   Fall[]      @relation(fields: [fallsIDs], references: [id])
+  user                    User        @relation(fields: [userId], references: [id])
+  userId                  String      @db.ObjectId @unique
+}
+
+model Events {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  fallId                  String      @db.ObjectId @unique
+  fall                    Fall        @relation(fields: [fallId], references: [id]) 
+  startTime               DateTime    @default(now())
+  larmed                  DateTime    @default(now())
+  larmCentral             DateTime?
+  ambulance               DateTime?
+  ambulanceEnRoute        DateTime?
+  ambulanceOnSpot         DateTime?
+  hospital                DateTime?
+}
+
+model Fall {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt               DateTime    @default(now())
+  location                Json
+  historys                History[]   @relation(fields: [historyIds], references: [id])
+  historyIds              String[]    @db.ObjectId
+  sensorUser              SensorUser  @relation(fields: [sensorUserId], references: [id])
+  sensorUserId            String      @db.ObjectId @unique
+  events                  Events?
+}
+
+model FitBit {      
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  access_token            String
+  createdAt               DateTime    @db.Date
+  refresh_token           String
+  sensorUser              SensorUser? @relation(fields: [sensorUserID], references: [id])
+  sensorUserID            String?     @unique @db.ObjectId 
+}
+
+
+model Chat {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  sensorUser              SensorUser  @relation(fields: [sensorUserId], references: [id])
+  sensorUserId            String      @db.ObjectId @unique
+  membersIds              String[]    @db.ObjectId
+  members                 User[]      @relation(fields: [membersIds], references: [id])
+  createdAt               DateTime    @default(now())
+  messages                Message[]
+}
+
+model Message {
+  id                      String      @id @default(auto()) @map("_id") @db.ObjectId
+  text                    String  
+  sender                  User        @relation(fields: [senderId], references: [id])
+  senderId                String      @db.ObjectId
+  chat                    Chat        @relation(fields: [chatId], references: [id])
+  chatId                  String      @db.ObjectId
+  createdAt               DateTime    @default(now())
+}
